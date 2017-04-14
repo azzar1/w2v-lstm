@@ -20,7 +20,7 @@ import os
 
 FLAGS = gflags.FLAGS
 
-gflags.DEFINE_string('filepath', 'data/glove.6B/glove.6B.50d.txt', 'File path to pretrained embedding.')
+gflags.DEFINE_string('filepath', 'data/glove.6B/glove.6B.50d.train.txt', 'File path to pretrained embedding.')
 gflags.DEFINE_boolean('lower', False, 'True to lowercase the lexicon.')
 gflags.DEFINE_integer('min_freq', 20, 'Minimum number of occurencies for a char.')
 
