@@ -135,7 +135,7 @@ def setup_plan(plan):
                                               norm_gain=FLAGS.norm_gain,
                                               norm_shift=FLAGS.norm_shift,
                                               dropout_keep_prob=keep_prob,
-                                              dropout_prob_seed=FLAGS.dropout_prob_seed), 'char_cell')
+                                              dropout_prob_seed=FLAGS.dropout_prob_seed), 'fw_char_cell')
 
     bw_char_cell = td.ScopedLayer(
         tf.contrib.rnn.LayerNormBasicLSTMCell(num_units=FLAGS.num_units,
@@ -144,7 +144,7 @@ def setup_plan(plan):
                                               norm_gain=FLAGS.norm_gain,
                                               norm_shift=FLAGS.norm_shift,
                                               dropout_keep_prob=keep_prob,
-                                              dropout_prob_seed=FLAGS.dropout_prob_seed), 'char_cell')
+                                              dropout_prob_seed=FLAGS.dropout_prob_seed), 'bw_char_cell')
 
     # int -> char embedding (+1 for unk values)
     char_embedding = td.Scalar('int32') >> td.Function(td.Embedding(len(vocab) + 1, FLAGS.char_embedding_size))
@@ -158,7 +158,7 @@ def setup_plan(plan):
 
     reverse_word = td.Slice(step=-1)
     bw_pass = (reverse_word >>
-               td.RNN(fw_char_cell) >>
+               td.RNN(bw_char_cell) >>
                td.GetItem(1) >> td.GetItem(1))
 
     # Bidirectional lstm
@@ -201,15 +201,16 @@ def setup_plan(plan):
 
         # Create loss tensor, and add it to the plan.
         loss_x = tf.losses.mean_squared_error(embedding_true, embedding_pred)
-        loss = tf.Print(loss_x, [learning_rate, loss_x])
-        plan.losses['mse'] = loss
 
         starter_learning_rate = 0.1
         learning_rate = tf.train.exponential_decay(starter_learning_rate, plan.global_step,
                                                    100, 0.96, staircase=True)
+                                                   
+        loss = tf.Print(loss_x, [learning_rate, loss_x])
+        plan.losses['mse'] = loss
 
         optr = tf.train.GradientDescentOptimizer(learning_rate)
-        plan.train_op = optr.minimize(plan.losses['cos'], plan.global_step)
+        plan.train_op = optr.minimize(plan.losses['mse'], plan.global_step)
 
         # collect all trainable variables
         #tvars = tf.trainable_variables()
